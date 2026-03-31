@@ -1,0 +1,231 @@
+/* Back button (shared class name used in this page) */
+.custom1-back {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: rgba(15, 23, 42, 0.9);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 9999;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
+  -webkit-tap-highlight-color: transparent;
+}
+
+
+.custom1-back:active {
+  transform: scale(0.98);
+}
+
+.custom1-back-arrow {
+  font-size: 26px;
+  line-height: 1;
+  margin-left: -1px;
+  user-select: none;
+}
+
+/* Layout */
+.custom2-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: stretch;
+  background: #f6f2e8;
+}
+
+.custom2-split {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+/* Left panel */
+.custom2-left {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(24px, 4vw, 64px);
+  overflow: hidden;
+}
+
+.custom2-previewCard {
+  width: min(420px, 90%);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.08),
+    0 2px 10px rgba(0, 0, 0, 0.04);
+  padding: 28px;
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+  backdrop-filter: blur(10px);
+}
+
+.custom2-previewImg {
+  width: min(320px, 90%);
+  height: auto;
+  display: block;
+}
+
+.custom2-hint {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: -0.2px;
+  color: rgba(15, 23, 42, 0.78);
+  text-align: center;
+}
+
+.custom2-blob {
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  border-radius: 999px;
+  right: -180px;
+  bottom: -220px;
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(59, 130, 246, 0.35),
+    rgba(99, 102, 241, 0.12) 45%,
+    rgba(0, 0, 0, 0) 70%
+  );
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+/* Right panel */
+.custom2-right {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(28px, 5vw, 76px);
+  color: #fff;
+  background: #3C4FD0;
+}
+
+.custom2-header {
+  margin-bottom: 24px;
+}
+
+.custom2-title {
+  margin: 0;
+  font-size: clamp(34px, 4.2vw, 54px);
+  line-height: 1.05;
+  letter-spacing: -1px;
+  font-weight: 800;
+  text-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+}
+
+.custom2-subtitle {
+  margin: 12px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.custom2-metaCard {
+  width: min(520px, 100%);
+  border-radius: 18px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+.custom2-metaRow {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  align-items: start;
+  gap: 10px;
+  padding: 10px 2px;
+}
+
+.custom2-label {
+  font-size: 12px;
+  letter-spacing: 0.2px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.custom2-value {
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.95);
+  word-break: break-word;
+}
+
+.custom2-valueMessage {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.custom2-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.18);
+  margin: 2px 0;
+}
+
+.custom2-button {
+  width: min(520px, 100%);
+  margin-top: 22px;
+  height: 52px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.92);
+  color: rgba(30, 41, 59, 0.92);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.custom2-button:hover {
+  transform: translateY(-1px);
+  background: #ffffff;
+  box-shadow:
+    0 22px 46px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.custom2-button:active {
+  transform: translateY(0px) scale(0.99);
+}
+
+.custom2-footnote {
+  width: min(520px, 100%);
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .custom2-split {
+    grid-template-columns: 1fr;
+  }
+
+  .custom2-right {
+    min-height: 55vh;
+  }
+
+  .custom2-left {
+    min-height: 45vh;
+  }
+}

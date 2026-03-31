@@ -1,0 +1,230 @@
+@font-face {
+    font-family: 'Paperozi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-1Thin.woff2') format('woff2');
+    font-weight: 100;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Paperozi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-2ExtraLight.woff2') format('woff2');
+    font-weight: 200;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Paperozi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-3Light.woff2') format('woff2');
+    font-weight: 300;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Paperozi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-4Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Paperozi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-5Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Paperozi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-6SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Paperozi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-7Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Paperozi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-8ExtraBold.woff2') format('woff2');
+    font-weight: 800;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Paperozi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-9Black.woff2') format('woff2');
+    font-weight: 900;
+    font-display: swap;
+}
+/* Scope tokens to Join page only (prevents global override) */
+.join-page {
+  --framie-blue: #fbf8f1;
+  --framie-ink: #2b2f3a;
+  --framie-bg: #3f55ea;
+}
+
+/* Layout */
+.join-page {
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  overflow: hidden;
+}
+
+.join-left {
+  flex: 1;
+  background: var(--framie-blue);
+  color: #3f55ea;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+}
+
+.join-left-inner {
+  text-align: center;
+  max-width: 520px;
+}
+
+.join-left-subtitle {
+  font-family: 'Paperozi';
+  margin: 0 0 22px;
+  font-size: 18px;
+  line-height: 1.4;
+  letter-spacing: -0.2px;
+}
+
+.join-left-logo {
+  width: min(420px, 80vw);
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.join-right {
+  flex: 1;
+  background: var(--framie-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+}
+
+.join-right-inner {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Title */
+.join-title {
+  width: 170px;
+  height: auto;
+  margin: 0 0 32px;
+}
+
+/* Form */
+.join-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.join-input {
+  width: 100%;
+  height: 54px;
+  padding: 0 18px;
+  border: 2px solid var(--framie-blue);
+  border-radius: 12px;
+  background: transparent;
+  outline: none;
+  font-size: 16px;
+  text-align: center;
+  color: var(--framie-blue);
+}
+
+.join-input::placeholder {
+  font-family: 'Paperozi';
+  color: #fff;
+}
+
+.join-links {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 0 6px;
+  margin-top: -4px;
+}
+
+.join-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+  color: #fff;
+  cursor: pointer;
+}
+
+.join-link:hover {
+  text-decoration: underline;
+}
+
+.join-submit {
+  margin-top: 10px;
+  height: 56px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--framie-blue);
+  color: var(--framie-bg);
+  font-family: 'Paperozi';
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.join-submit:active {
+  transform: translateY(1px);
+}
+
+/* Accessibility (scoped) */
+.join-page .sr-only {
+  color: #fff;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Responsive: stack on small screens */
+@media (max-width: 900px) {
+  .join-page {
+    flex-direction: column;
+  }
+
+  .join-left,
+  .join-right {
+    flex: none;
+    width: 100%;
+  }
+
+  .join-left {
+    padding: 36px 24px;
+  }
+
+  .join-right {
+    padding: 36px 24px;
+  }
+}
