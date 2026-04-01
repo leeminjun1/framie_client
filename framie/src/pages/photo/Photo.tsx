@@ -20,18 +20,21 @@ const fontFaceStyles = `
 const frameOptions = [
   {
     id: 2,
+    frameId: "frame-2-cut",
     title: "2컷",
     description: "위아래 배치",
     previewClassName: "two-cut",
   },
   {
     id: 3,
+    frameId: "frame-3-cut",
     title: "3컷",
     description: "가로로 길게 3분할",
     previewClassName: "three-cut",
   },
   {
     id: 4,
+    frameId: "frame-4-cut",
     title: "4컷",
     description: "세로 4분할",
     previewClassName: "four-cut",
@@ -59,6 +62,7 @@ export default function Photo() {
               onClick={() => {
                 navigate("/takephoto", {
                   state: {
+                    frameId: option.frameId,
                     shotCount: option.id,
                     frameTitle: option.title,
                   },
