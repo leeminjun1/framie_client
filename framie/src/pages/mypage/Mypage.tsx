@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import h1 from "../../assets/Mypage.svg";
 import { api, isLoggedIn } from "../../lib/api";
 
@@ -40,6 +41,7 @@ type Session = {
 };
 
 export default function Mypage() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"myframe" | "photos">("myframe");
   const [userId, setUserId] = useState("로그인 정보 없음");
   const [isLoadingUser, setIsLoadingUser] = useState(true);
@@ -87,7 +89,32 @@ export default function Mypage() {
   }, [activeTab]);
 
   return (
-    <div style={{ minHeight: "100vh", background: "radial-gradient(circle at top, #ffffff 0%, #f7f8ff 32%, #f5f4ee 72%, #efeff8 100%)", padding: "clamp(20px, 4vw, 40px) clamp(16px, 3vw, 32px) 56px", boxSizing: "border-box" }}>
+    <div style={{ minHeight: "100vh", background: "radial-gradient(circle at top, #ffffff 0%, #f7f8ff 32%, #f5f4ee 72%, #efeff8 100%)", padding: "clamp(20px, 4vw, 40px) clamp(16px, 3vw, 32px) 56px", boxSizing: "border-box", position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => navigate("/")}
+        style={{
+          position: "fixed",
+          top: "24px",
+          right: "24px",
+          zIndex: 120,
+          height: "48px",
+          padding: "0 18px",
+          border: "none",
+          borderRadius: "999px",
+          background: "linear-gradient(135deg, #4050d6 0%, #6573ea 100%)",
+          color: "#fff",
+          fontSize: "14px",
+          fontWeight: 800,
+          cursor: "pointer",
+          boxShadow: "0 14px 30px rgba(64,80,214,0.22)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center"
+        }}
+      >
+        홈으로
+      </button>
 
       {/* 사진 모달 */}
       {selectedSession && (
