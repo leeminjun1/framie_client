@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 import JoinLogo from "../../assets/Join_Logo.svg";
 import Logo from "../../assets/Framie_blue.svg";
-import { supabase } from "../../lib/supabase";
+import { api } from "../../lib/api";
 
 export default function Join() {
   const navigate = useNavigate();
@@ -42,32 +42,7 @@ export default function Join() {
     setErrorMessage("");
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email: trimmedEmail,
-        password,
-      });
-
-      if (error) {
-        const message = error.message.toLowerCase();
-
-        if (
-          message.includes("rate limit") ||
-          message.includes("too many requests") ||
-          message.includes("email rate limit exceeded")
-        ) {
-          setErrorMessage("요청이 너무 많습니다. 잠시 후 다시 시도해주세요.");
-          return;
-        }
-
-        if (message.includes("already registered")) {
-          setErrorMessage("이미 가입된 이메일입니다.");
-          return;
-        }
-
-        setErrorMessage(error.message);
-        return;
-      }
-
+      await api.auth.signup(trimmedEmail, password);
       alert("회원가입이 완료되었습니다.");
       navigate("/login");
     } catch (error) {

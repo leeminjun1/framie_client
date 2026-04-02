@@ -1,13 +1,9 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import h1 from "../../assets/frame_photo.svg";
 import { useLocation, useNavigate } from "react-router-dom";
+import { api } from "../../lib/api";
 
 const PRIMARY = "#3047d9";
-const REMOVEBG_API_URL = "https://api.remove.bg/v1.0/removebg";
-
-type RemoveBgErrorResponse = {
-  errors?: Array<{ title?: string }>;
-};
 
 type ResultPayload = {
   frameId: string;
@@ -17,41 +13,7 @@ type ResultPayload = {
 };
 
 async function removeBackground(imageBlob: Blob) {
-  const apiKey = import.meta.env.VITE_REMOVEBG_API_KEY;
-
-  if (!apiKey) {
-    throw new Error("remove.bg API 키가 없어요. .env 설정을 확인해 주세요.");
-  }
-
-  const formData = new FormData();
-  formData.append("image_file", imageBlob, "capture.png");
-  formData.append("size", "auto");
-  formData.append("format", "png");
-
-  const response = await fetch(REMOVEBG_API_URL, {
-    method: "POST",
-    headers: {
-      "X-Api-Key": apiKey,
-    },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    let message = "배경 제거에 실패했어요.";
-
-    try {
-      const errorData = (await response.json()) as RemoveBgErrorResponse;
-      if (errorData.errors?.[0]?.title) {
-        message = errorData.errors[0].title;
-      }
-    } catch {
-      // ignore
-    }
-
-    throw new Error(message);
-  }
-
-  return response.blob();
+  return api.images.removeBg(imageBlob);
 }
 
 function blobToDataUrl(blob: Blob) {

@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 import LoginLogo from "../../assets/Login_Logo.svg";
 import Logo from "../../assets/Framie_white.svg";
-import { supabase } from "../../lib/supabase";
+import { api } from "../../lib/api";
 
 
 
@@ -28,20 +28,14 @@ export default function Login() {
     setIsLoading(true);
     setErrorMessage("");
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
-
-    setIsLoading(false);
-
-    if (error) {
-      console.error("로그인 오류:", error);
+    try {
+      await api.auth.login(email.trim(), password);
+      navigate("/index");
+    } catch {
       setErrorMessage("이메일 또는 비밀번호를 다시 확인해주세요.");
-      return;
+    } finally {
+      setIsLoading(false);
     }
-
-    navigate("/index");
   };
 
   return (
