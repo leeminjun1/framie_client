@@ -9,12 +9,12 @@ const WHITE = "#ffffff";
 const RESULT_STORAGE_BUCKET = "photo-results";
 
 const FRAME_COLOR_OPTIONS = [
-  { key: "classic", label: "클래식 블루", border: "#4050d6", inner: "rgba(64,80,214,0.22)", preview: "#f1f2fb" },
-  { key: "pink", label: "소프트 핑크", border: "#e66aa3", inner: "rgba(230,106,163,0.24)", preview: "#fff1f7" },
-  { key: "orange", label: "코랄 오렌지", border: "#f28a3f", inner: "rgba(242,138,63,0.24)", preview: "#fff4ea" },
-  { key: "mint", label: "민트", border: "#47bfa9", inner: "rgba(71,191,169,0.24)", preview: "#eefcf8" },
-  { key: "lavender", label: "라벤더", border: "#8b74f2", inner: "rgba(139,116,242,0.24)", preview: "#f4f1ff" },
-  { key: "mono", label: "모노", border: "#4b5563", inner: "rgba(75,85,99,0.22)", preview: "#f3f4f6" },
+  { key: "classic", label: "클래식 블루", border: "#4050d6", inner: "#3140bf", preview: "#f1f2fb" },
+  { key: "pink", label: "소프트 핑크", border: "#e66aa3", inner: "#cf4d8d", preview: "#fff1f7" },
+  { key: "orange", label: "코랄 오렌지", border: "#f28a3f", inner: "#dd7428", preview: "#fff4ea" },
+  { key: "mint", label: "민트", border: "#47bfa9", inner: "#2fa58f", preview: "#eefcf8" },
+  { key: "lavender", label: "라벤더", border: "#8b74f2", inner: "#7258e2", preview: "#f4f1ff" },
+  { key: "mono", label: "모노", border: "#111111", inner: "#000000", preview: "#f3f4f6" },
 ] as const;
 
 type FrameColorOption = (typeof FRAME_COLOR_OPTIONS)[number];
@@ -116,8 +116,8 @@ function getSlots(shotCount: number): Slot[] {
     ];
   }
   return [
-    { left: 22, top: 8.5, width: 56, height: 37 },
-    { left: 22, top: 54.5, width: 56, height: 37 },
+    { left: 13, top: 6, width: 74, height: 38 },
+    { left: 13, top: 56, width: 74, height: 38 },
   ];
 }
 
@@ -131,6 +131,7 @@ function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: num
   ctx.arcTo(x, y, x + w, y, radius);
   ctx.closePath();
 }
+
 
 function fitSlotToAspect(slot: Slot, targetAspect: number, shotCount: number): Slot {
   if (shotCount === 3) return slot;
@@ -146,6 +147,30 @@ function fitSlotToAspect(slot: Slot, targetAspect: number, shotCount: number): S
     top: slot.top + (slot.height - enlargedHeight) / 2,
     width: nextWidth,
     height: enlargedHeight,
+  };
+}
+
+function applySlotGap(slot: Slot, shotCount: number): Slot {
+  if (shotCount === 3) {
+    return {
+      ...slot,
+      left: slot.left + 1.2,
+      width: slot.width - 2.4,
+    };
+  }
+
+  if (shotCount === 4) {
+    return {
+      ...slot,
+      top: slot.top + 1.1,
+      height: slot.height - 2.2,
+    };
+  }
+
+  return {
+    ...slot,
+    top: slot.top + 0.5,
+    height: slot.height - 1,
   };
 }
 
@@ -167,16 +192,22 @@ async function buildTransparentResultImage(photos: string[], shotCount: number, 
 
   const outerX = shotCount === 3 ? 120 : 180, outerY = shotCount === 3 ? 150 : 110;
   const outerW = shotCount === 3 ? 1560 : 840, outerH = shotCount === 3 ? 800 : 1380;
-  const innerX = shotCount === 3 ? 220 : 300, innerY = shotCount === 3 ? 245 : 200;
-  const innerW = shotCount === 3 ? 1360 : 600, innerH = shotCount === 3 ? 610 : 1080;
-  const slots = getSlots(shotCount).map((s) => fitSlotToAspect(s, getViewportAspectRatio(), shotCount));
+  const innerX = shotCount === 3 ? 220 : 300, innerY = shotCount === 3 ? 225 : 225;
+  const innerW = shotCount === 3 ? 1360 : 600, innerH = shotCount === 3 ? 610 : 1030;
+  const slots = getSlots(shotCount).map((s) => applySlotGap(fitSlotToAspect(s, getViewportAspectRatio(), shotCount), shotCount));
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
   ctx.save();
-  ctx.strokeStyle = frameColor.border; ctx.lineWidth = 7;
-  roundedRect(ctx, outerX, outerY, outerW, outerH, 54); ctx.stroke();
-  ctx.strokeStyle = frameColor.inner; ctx.lineWidth = 5;
-  roundedRect(ctx, innerX, innerY, innerW, innerH, 42); ctx.stroke();
+  ctx.fillStyle = frameColor.border;
+  roundedRect(ctx, outerX, outerY, outerW, outerH, 0);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.fillStyle = frameColor.border;
+  roundedRect(ctx, innerX, innerY, innerW, innerH, 0);
+  ctx.fill();
   ctx.restore();
 
   for (let i = 0; i < slots.length; i++) {
@@ -188,7 +219,7 @@ async function buildTransparentResultImage(photos: string[], shotCount: number, 
     const y = innerY + (slot.top / 100) * innerH;
     const w = (slot.width / 100) * innerW;
     const h = (slot.height / 100) * innerH;
-    const radius = shotCount === 3 ? 0 : shotCount === 4 ? 32 : 44;
+    const radius = 0;
     ctx.save();
     roundedRect(ctx, x, y, w, h, radius); ctx.clip();
     const baseRatio = Math.max(w / img.width, h / img.height);
@@ -200,12 +231,12 @@ async function buildTransparentResultImage(photos: string[], shotCount: number, 
 }
 
 function FramePreview({ shotCount, photos, frameColor }: { shotCount: number; photos: string[]; frameColor: FrameColorOption }) {
-  const slots = getSlots(shotCount).map((s) => fitSlotToAspect(s, getViewportAspectRatio(), shotCount));
+  const slots = getSlots(shotCount).map((s) => applySlotGap(fitSlotToAspect(s, getViewportAspectRatio(), shotCount), shotCount));
   return (
-    <div style={{ width: shotCount === 3 ? "min(88vw, 980px)" : "min(78vw, 520px)", aspectRatio: `${getFrameAspectRatio(shotCount)}`, border: `3px solid ${frameColor.border}`, borderRadius: 34, padding: "22px", boxSizing: "border-box", background: "rgba(255,255,255,0.22)" }}>
-      <div style={{ width: "100%", height: "100%", border: `2px solid ${frameColor.inner}`, borderRadius: 28, position: "relative", background: "transparent" }}>
+    <div style={{ width: shotCount === 3 ? "min(88vw, 980px)" : "min(78vw, 520px)", aspectRatio: `${getFrameAspectRatio(shotCount)}`, border: `3px solid ${frameColor.border}`, borderRadius: 0, padding: shotCount === 3 ? "0px" : "18px 0", boxSizing: "border-box", background: frameColor.border }}>
+      <div style={{ width: "100%", height: "100%", border: "none", borderRadius: 0, position: "relative", background: frameColor.border }}>
         {slots.map((slot, i) => (
-          <div key={i} style={{ position: "absolute", left: `${slot.left}%`, top: `${slot.top}%`, width: `${slot.width}%`, height: `${slot.height}%`, borderRadius: shotCount === 3 ? 0 : shotCount === 4 ? 18 : 24, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: frameColor.preview, border: shotCount === 3 ? "none" : `2px dashed ${frameColor.inner}`, boxSizing: "border-box" }}>
+          <div key={i} style={{ position: "absolute", left: `${slot.left}%`, top: `${slot.top}%`, width: `${slot.width}%`, height: `${slot.height}%`, borderRadius: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: photos[i] ? frameColor.preview : "rgba(255,255,255,0.12)", border: "none", boxSizing: "border-box" }}>
             {photos[i] ? <img src={photos[i]} alt={`${i + 1}번째 컷`} style={{ width: "100%", height: "100%", objectFit: shotCount === 3 ? "cover" : "contain", transform: shotCount === 3 ? "scale(1.18)" : "scale(1.06)", transformOrigin: "center" }} /> : null}
           </div>
         ))}
