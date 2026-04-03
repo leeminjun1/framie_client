@@ -36,7 +36,7 @@ function getViewportAspectRatio() {
 }
 
 function getFrameAspectRatio(shotCount: number) {
-  return shotCount === 3 ? 1.72 : 0.62;
+  return shotCount === 3 ? 2.55 : 0.62;
 }
 
 function generateRandomCode() {
@@ -102,11 +102,12 @@ async function resolveFrameId(options: { frameId?: string; frameTitle?: string; 
 function getSlots(shotCount: number): Slot[] {
   if (shotCount === 3) {
     return [
-      { left: 0, top: 31, width: 33.34, height: 30 },
-      { left: 33.33, top: 31, width: 33.34, height: 30 },
-      { left: 66.66, top: 31, width: 33.34, height: 30 },
+      { left: 0, top: 0, width: 33.34, height: 100 },
+      { left: 33.33, top: 0, width: 33.34, height: 100 },
+      { left: 66.66, top: 0, width: 33.34, height: 100 },
     ];
   }
+
   if (shotCount === 4) {
     return [
       { left: 16, top: 10, width: 68, height: 14 },
@@ -115,10 +116,18 @@ function getSlots(shotCount: number): Slot[] {
       { left: 16, top: 79, width: 68, height: 14 },
     ];
   }
+
   return [
     { left: 13, top: 6, width: 74, height: 38 },
     { left: 13, top: 56, width: 74, height: 38 },
   ];
+}
+
+function getThreeCutBand() {
+  return {
+    top: 35, //슬롯의 위치 
+    height: 32,
+  };
 }
 
 function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -186,15 +195,16 @@ async function loadImage(src: string) {
 async function buildTransparentResultImage(photos: string[], shotCount: number, frameColor: FrameColorOption) {
   const canvas = document.createElement("canvas");
   canvas.width = shotCount === 3 ? 1800 : 1200;
-  canvas.height = shotCount === 3 ? 1100 : 1600;
+  canvas.height = shotCount === 3 ? 900 : 1600;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("결과 이미지를 만들 수 없어요.");
 
-  const outerX = shotCount === 3 ? 120 : 180, outerY = shotCount === 3 ? 150 : 110;
-  const outerW = shotCount === 3 ? 1560 : 840, outerH = shotCount === 3 ? 800 : 1380;
-  const innerX = shotCount === 3 ? 220 : 300, innerY = shotCount === 3 ? 225 : 225;
-  const innerW = shotCount === 3 ? 1360 : 600, innerH = shotCount === 3 ? 610 : 1030;
+  const outerX = shotCount === 3 ? 120 : 180, outerY = shotCount === 3 ? 130 : 110;
+  const outerW = shotCount === 3 ? 1560 : 840, outerH = shotCount === 3 ? 640 : 1380;
+  const innerX = shotCount === 3 ? 220 : 300, innerY = shotCount === 3 ? 185 : 225;
+  const innerW = shotCount === 3 ? 1360 : 600, innerH = shotCount === 3 ? 530 : 1030;
   const slots = getSlots(shotCount).map((s) => applySlotGap(fitSlotToAspect(s, getViewportAspectRatio(), shotCount), shotCount));
+  const threeCutBand = shotCount === 3 ? getThreeCutBand() : null;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -215,10 +225,14 @@ async function buildTransparentResultImage(photos: string[], shotCount: number, 
     if (!photo) continue;
     const slot = slots[i];
     const img = await loadImage(photo);
-    const x = innerX + (slot.left / 100) * innerW;
-    const y = innerY + (slot.top / 100) * innerH;
-    const w = (slot.width / 100) * innerW;
-    const h = (slot.height / 100) * innerH;
+    const bandX = innerX;
+    const bandY = shotCount === 3 && threeCutBand ? innerY + (threeCutBand.top / 100) * innerH : innerY;
+    const bandW = innerW;
+    const bandH = shotCount === 3 && threeCutBand ? (threeCutBand.height / 100) * innerH : innerH;
+    const x = bandX + (slot.left / 100) * bandW;
+    const y = bandY + (slot.top / 100) * bandH;
+    const w = (slot.width / 100) * bandW;
+    const h = (slot.height / 100) * bandH;
     const radius = 0;
     ctx.save();
     roundedRect(ctx, x, y, w, h, radius); ctx.clip();
@@ -235,11 +249,34 @@ function FramePreview({ shotCount, photos, frameColor }: { shotCount: number; ph
   return (
     <div style={{ width: shotCount === 3 ? "min(88vw, 980px)" : "min(78vw, 520px)", aspectRatio: `${getFrameAspectRatio(shotCount)}`, border: `3px solid ${frameColor.border}`, borderRadius: 0, padding: shotCount === 3 ? "0px" : "18px 0", boxSizing: "border-box", background: frameColor.border }}>
       <div style={{ width: "100%", height: "100%", border: "none", borderRadius: 0, position: "relative", background: frameColor.border }}>
-        {slots.map((slot, i) => (
-          <div key={i} style={{ position: "absolute", left: `${slot.left}%`, top: `${slot.top}%`, width: `${slot.width}%`, height: `${slot.height}%`, borderRadius: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: photos[i] ? frameColor.preview : "rgba(255,255,255,0.12)", border: "none", boxSizing: "border-box" }}>
-            {photos[i] ? <img src={photos[i]} alt={`${i + 1}번째 컷`} style={{ width: "100%", height: "100%", objectFit: shotCount === 3 ? "cover" : "contain", transform: shotCount === 3 ? "scale(1.18)" : "scale(1.06)", transformOrigin: "center" }} /> : null}
-          </div>
-        ))}
+        {shotCount === 3 ? (
+          (() => {
+            const band = getThreeCutBand();
+            return (
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: `${band.top}%`,
+                  width: "100%",
+                  height: `${band.height}%`,
+                }}
+              >
+                {slots.map((slot, i) => (
+                  <div key={i} style={{ position: "absolute", left: `${slot.left}%`, top: `${slot.top}%`, width: `${slot.width}%`, height: `${slot.height}%`, borderRadius: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: photos[i] ? frameColor.preview : "rgba(255,255,255,0.12)", border: "none", boxSizing: "border-box" }}>
+                    {photos[i] ? <img src={photos[i]} alt={`${i + 1}번째 컷`} style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.18)", transformOrigin: "center" }} /> : null}
+                  </div>
+                ))}
+              </div>
+            );
+          })()
+        ) : (
+          slots.map((slot, i) => (
+            <div key={i} style={{ position: "absolute", left: `${slot.left}%`, top: `${slot.top}%`, width: `${slot.width}%`, height: `${slot.height}%`, borderRadius: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: photos[i] ? frameColor.preview : "rgba(255,255,255,0.12)", border: "none", boxSizing: "border-box" }}>
+              {photos[i] ? <img src={photos[i]} alt={`${i + 1}번째 컷`} style={{ width: "100%", height: "100%", objectFit: "contain", transform: "scale(1.06)", transformOrigin: "center" }} /> : null}
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
