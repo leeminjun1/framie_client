@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import h1 from "../../assets/photo_result.svg";
 import { api, isLoggedIn } from "../../lib/api";
+import PhotoEditor from "./PhotoEditor";
 
 const PAGE_BG = "#f5f4ee";
 const PRIMARY = "#4050d6";
@@ -24,7 +25,11 @@ type ResultState = {
   shotCount?: number;
   frameTitle?: string;
   photos?: string[];
+  originals?: string[];
   message?: string;
+  sourceType?: string;
+  frameOwnerId?: string;
+  overlayPhotos?: string[];
 };
 
 type Slot = { left: number; top: number; width: number; height: number };
@@ -226,6 +231,8 @@ async function buildTransparentResultImage(photos: string[], shotCount: number, 
     const radius = 0;
     ctx.save();
     roundedRect(ctx, x, y, w, h, radius); ctx.clip();
+    ctx.fillStyle = frameColor.preview;
+    ctx.fillRect(x, y, w, h);
     const baseRatio = Math.max(w / img.width, h / img.height);
     const ratio = shotCount === 3 ? baseRatio * 1.18 : baseRatio * 1.06;
     ctx.drawImage(img, x + (w - img.width * ratio) / 2, y + (h - img.height * ratio) / 2, img.width * ratio, img.height * ratio);
@@ -234,7 +241,40 @@ async function buildTransparentResultImage(photos: string[], shotCount: number, 
   return canvas.toDataURL("image/png");
 }
 
-function FramePreview({ shotCount, photos, frameColor }: { shotCount: number; photos: string[]; frameColor: FrameColorOption }) {
+function EditCutButton({ index, onEditCut }: { index: number; onEditCut: (index: number) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onEditCut(index); }}
+      aria-label={`${index + 1}번째 컷 수정`}
+      style={{
+        position: "absolute",
+        top: "8px",
+        right: "8px",
+        width: "32px",
+        height: "32px",
+        borderRadius: "999px",
+        border: "none",
+        background: "rgba(255,255,255,0.94)",
+        color: "#1f2552",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.22)",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 0,
+        zIndex: 5,
+      }}
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+      </svg>
+    </button>
+  );
+}
+
+function FramePreview({ shotCount, photos, frameColor, onEditCut }: { shotCount: number; photos: string[]; frameColor: FrameColorOption; onEditCut?: (index: number) => void }) {
   const slots = getSlots(shotCount).map((s) => applySlotGap(fitSlotToAspect(s, getViewportAspectRatio(), shotCount), shotCount));
   return (
     <div style={{ width: shotCount === 3 ? "min(88vw, 980px)" : "min(78vw, 520px)", aspectRatio: `${getFrameAspectRatio(shotCount)}`, border: `3px solid ${frameColor.border}`, borderRadius: 0, padding: shotCount === 3 ? "0px" : "18px 0", boxSizing: "border-box", background: frameColor.border }}>
@@ -255,6 +295,7 @@ function FramePreview({ shotCount, photos, frameColor }: { shotCount: number; ph
                 {slots.map((slot, i) => (
                   <div key={i} style={{ position: "absolute", left: `${slot.left}%`, top: `${slot.top}%`, width: `${slot.width}%`, height: `${slot.height}%`, borderRadius: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: photos[i] ? frameColor.preview : "rgba(255,255,255,0.12)", border: "none", boxSizing: "border-box" }}>
                     {photos[i] ? <img src={photos[i]} alt={`${i + 1}번째 컷`} style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.18)", transformOrigin: "center" }} /> : null}
+                    {photos[i] && onEditCut ? <EditCutButton index={i} onEditCut={onEditCut} /> : null}
                   </div>
                 ))}
               </div>
@@ -264,6 +305,7 @@ function FramePreview({ shotCount, photos, frameColor }: { shotCount: number; ph
           slots.map((slot, i) => (
             <div key={i} style={{ position: "absolute", left: `${slot.left}%`, top: `${slot.top}%`, width: `${slot.width}%`, height: `${slot.height}%`, borderRadius: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: photos[i] ? frameColor.preview : "rgba(255,255,255,0.12)", border: "none", boxSizing: "border-box" }}>
               {photos[i] ? <img src={photos[i]} alt={`${i + 1}번째 컷`} style={{ width: "100%", height: "100%", objectFit: "contain", transform: "scale(1.06)", transformOrigin: "center" }} /> : null}
+              {photos[i] && onEditCut ? <EditCutButton index={i} onEditCut={onEditCut} /> : null}
             </div>
           ))
         )}
@@ -282,7 +324,11 @@ export default function PhotoResult() {
   const frameId = state.frameId ?? storedState?.frameId ?? "";
   const shotCount = state.shotCount ?? storedState?.shotCount ?? 2;
   const frameTitle = state.frameTitle ?? storedState?.frameTitle ?? `${shotCount}컷`;
-  const photos = state.photos ?? storedState?.photos ?? [];
+  const [photos, setPhotos] = useState<string[]>(() => state.photos ?? storedState?.photos ?? []);
+  const [originals] = useState<string[]>(() => state.originals ?? storedState?.originals ?? []);
+  const sourceType = state.sourceType ?? storedState?.sourceType;
+  const frameOwnerIdFromState = state.frameOwnerId ?? storedState?.frameOwnerId;
+  const overlayPhotos = state.overlayPhotos ?? storedState?.overlayPhotos;
   const initialMessage = state.message ?? storedState?.message ?? "";
 
   const [shareCode, setShareCode] = useState("");
@@ -295,6 +341,8 @@ export default function PhotoResult() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
   const [saveStatusMessage, setSaveStatusMessage] = useState("");
   const [selectedFrameColorKey, setSelectedFrameColorKey] = useState<FrameColorOption["key"]>("classic");
+  const [editingCutIndex, setEditingCutIndex] = useState<number | null>(null);
+  const [editorCutIndex, setEditorCutIndex] = useState<number | null>(null);
 
   // 코드는 저장(handleSave) 후 백엔드가 생성한 값으로 세팅됨
 
@@ -322,8 +370,8 @@ export default function PhotoResult() {
   }, [saveStatus, saveStatusMessage]);
 
   useEffect(() => {
-    sessionStorage.setItem("photoResultData", JSON.stringify({ ...storedState, frameId, shotCount, frameTitle, photos, message }));
-  }, [storedState, frameId, shotCount, frameTitle, photos, message]);
+    sessionStorage.setItem("photoResultData", JSON.stringify({ ...storedState, frameId, shotCount, frameTitle, photos, originals, message, sourceType, frameOwnerId: frameOwnerIdFromState, overlayPhotos }));
+  }, [storedState, frameId, shotCount, frameTitle, photos, originals, message, sourceType, frameOwnerIdFromState, overlayPhotos]);
 
   const selectedFrameColor = useMemo(
     () => FRAME_COLOR_OPTIONS.find((o) => o.key === selectedFrameColorKey) ?? FRAME_COLOR_OPTIONS[0],
@@ -384,7 +432,8 @@ export default function PhotoResult() {
 
       const createdSession = await api.sessions.create({
         frame_id: resolvedFrameId,
-        frame_owner_id: authUserId,
+        frame_owner_id: frameOwnerIdFromState || authUserId,
+        source_type: sourceType,
         user_message: message || undefined,
         result_image_path: previewPath,
         result_thumbnail_path: previewPath,
@@ -414,7 +463,7 @@ export default function PhotoResult() {
     <div style={{ minHeight: "100vh", background: PAGE_BG, display: "grid", gridTemplateColumns: shotCount === 3 ? "minmax(760px, 1fr) minmax(320px, 570px)" : "minmax(0, 1fr) minmax(320px, 570px)" }}>
       <section style={{ background: PAGE_BG, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", boxSizing: "border-box" }}>
         {photos.length > 0 ? (
-          <FramePreview shotCount={shotCount} photos={photos} frameColor={selectedFrameColor} />
+          <FramePreview shotCount={shotCount} photos={photos} frameColor={selectedFrameColor} onEditCut={setEditingCutIndex} />
         ) : (
           <div style={{ width: shotCount === 3 ? "min(88vw, 980px)" : "min(78vw, 520px)", aspectRatio: `${getFrameAspectRatio(shotCount)}`, border: "2px dashed rgba(64,80,214,0.28)", borderRadius: 34, display: "flex", alignItems: "center", justifyContent: "center", color: PRIMARY, fontSize: 18, fontWeight: 600 }}>
             아직 촬영된 사진이 없어요
@@ -487,6 +536,75 @@ export default function PhotoResult() {
           </div>
         </div>
       </section>
+
+      {editingCutIndex !== null && (
+        <div
+          onClick={() => setEditingCutIndex(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(10,14,40,0.64)", backdropFilter: "blur(4px)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: "#ffffff", borderRadius: "24px", padding: "28px 24px 22px", width: "100%", maxWidth: "340px", boxShadow: "0 24px 60px rgba(10,14,40,0.28)", display: "flex", flexDirection: "column", gap: "18px" }}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <p style={{ margin: 0, fontSize: "18px", fontWeight: 800, color: "#1f2552" }}>{editingCutIndex + 1}번째 컷 수정</p>
+              <p style={{ margin: 0, fontSize: "13px", color: "#8b8b95" }}>어떻게 수정할지 선택해주세요</p>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const targetIndex = editingCutIndex;
+                  setEditingCutIndex(null);
+                  navigate("/takephoto", {
+                    state: { frameId, shotCount, frameTitle, retakeIndex: targetIndex, photos, originals, sourceType, frameOwnerId: frameOwnerIdFromState, overlayPhotos },
+                  });
+                }}
+                style={{ width: "100%", height: "52px", borderRadius: "14px", border: "none", background: PRIMARY, color: WHITE, fontSize: "15px", fontWeight: 800, cursor: "pointer" }}
+              >
+                다시 찍기
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const idx = editingCutIndex;
+                  setEditingCutIndex(null);
+                  setEditorCutIndex(idx);
+                }}
+                style={{ width: "100%", height: "52px", borderRadius: "14px", border: `2px solid ${PRIMARY}`, background: "transparent", color: PRIMARY, fontSize: "15px", fontWeight: 800, cursor: "pointer" }}
+              >
+                직접 수정
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setEditingCutIndex(null)}
+              style={{ background: "none", border: "none", padding: "4px", color: "#8b8b95", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
+
+      {editorCutIndex !== null && photos[editorCutIndex] && (
+        <PhotoEditor
+          transparentSrc={photos[editorCutIndex]}
+          originalSrc={originals[editorCutIndex] ?? null}
+          onCancel={() => setEditorCutIndex(null)}
+          onApply={(newDataUrl) => {
+            const idx = editorCutIndex;
+            setPhotos((prev) => {
+              const next = [...prev];
+              next[idx] = newDataUrl;
+              return next;
+            });
+            setEditorCutIndex(null);
+          }}
+        />
+      )}
     </div>
   );
 }

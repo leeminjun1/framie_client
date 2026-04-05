@@ -10,11 +10,27 @@ type Frame = {
   shot_count: number;
 };
 
+type SessionPhoto = {
+  shot_order: number;
+  original_path: string | null;
+  processed_path: string | null;
+};
+
 type Session = {
   id: string;
   frame_id: string;
+  frame_owner_id: string | null;
   frame: Frame | null;
+  photos: SessionPhoto[] | null;
 };
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const OVERLAY_BUCKET = "photo-results";
+
+function getStorageUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  return `${SUPABASE_URL}/storage/v1/object/public/${OVERLAY_BUCKET}/${path}`;
+}
 
 export default function Custom1() {
   const navigate = useNavigate();
@@ -40,11 +56,19 @@ export default function Custom1() {
 
       const frame = session.frame;
 
+      const sortedPhotos = [...(session.photos ?? [])].sort((a, b) => a.shot_order - b.shot_order);
+      const overlayPhotos = sortedPhotos
+        .map((p) => getStorageUrl(p.processed_path ?? p.original_path))
+        .filter((u): u is string => !!u);
+
       navigate("/takephoto", {
         state: {
           frameId: frame.id,
           shotCount: frame.shot_count,
           frameTitle: frame.title || `${frame.shot_count}컷`,
+          overlayPhotos,
+          sourceType: "other_frame",
+          frameOwnerId: session.frame_owner_id ?? undefined,
         },
       });
     } catch {

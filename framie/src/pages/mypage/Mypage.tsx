@@ -23,6 +23,33 @@ function formatDate(iso: string) {
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
 
+async function downloadImage(url: string, filename: string) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  } catch (e) {
+    console.error("이미지 다운로드 실패", e);
+    alert("이미지 저장에 실패했어요. 잠시 후 다시 시도해주세요.");
+  }
+}
+
+const DownloadIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="7 10 12 15 17 10" />
+    <line x1="12" y1="15" x2="12" y2="3" />
+  </svg>
+);
+
 type SessionPhoto = {
   id: string;
   shot_order: number;
@@ -33,6 +60,7 @@ type SessionPhoto = {
 type Session = {
   id: string;
   created_at: string;
+  source_type: string | null;
   result_thumbnail_path: string | null;
   result_image_path: string | null;
   frame: { title: string; shot_count: number } | null;
@@ -74,11 +102,11 @@ export default function Mypage() {
   }, []);
 
   useEffect(() => {
-    if (activeTab !== "myframe" || !isLoggedIn()) return;
+    if (!isLoggedIn()) return;
     let isMounted = true;
     setIsLoadingSessions(true);
 
-    api.users.recentSessions(20)
+    api.users.recentSessions(50)
       .then((res) => {
         if (isMounted) setSessions((res as { sessions: Session[] }).sessions ?? []);
       })
@@ -86,13 +114,17 @@ export default function Mypage() {
       .finally(() => { if (isMounted) setIsLoadingSessions(false); });
 
     return () => { isMounted = false; };
-  }, [activeTab]);
+  }, []);
+
+  const myFrameSessions = sessions.filter((s) => s.source_type !== "other_frame");
+  const customPhotoSessions = sessions.filter((s) => s.source_type === "other_frame");
+  const visibleSessions = activeTab === "myframe" ? myFrameSessions : customPhotoSessions;
 
   return (
     <div style={{ minHeight: "100vh", background: "radial-gradient(circle at top, #ffffff 0%, #f7f8ff 32%, #f5f4ee 72%, #efeff8 100%)", padding: "clamp(20px, 4vw, 40px) clamp(16px, 3vw, 32px) 56px", boxSizing: "border-box", position: "relative" }}>
       <button
         type="button"
-        onClick={() => navigate("/")}
+        onClick={() => navigate("/index")}
         style={{
           position: "fixed",
           top: "24px",
@@ -142,7 +174,20 @@ export default function Mypage() {
             {/* 결과 이미지 */}
             {(selectedSession.result_image_path ?? selectedSession.result_thumbnail_path) && (
               <div style={{ marginBottom: "20px" }}>
-                <p style={{ margin: "0 0 10px", fontSize: "13px", fontWeight: 700, color: MUTED }}>결과 이미지</p>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+                  <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: MUTED }}>결과 이미지</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = getStorageUrl(selectedSession.result_image_path ?? selectedSession.result_thumbnail_path);
+                      if (url) downloadImage(url, `framie-${selectedSession.share_code?.code ?? selectedSession.id}.png`);
+                    }}
+                    aria-label="저장"
+                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "34px", height: "34px", border: "none", borderRadius: "999px", background: "linear-gradient(135deg, #4050d6 0%, #6573ea 100%)", color: "#fff", cursor: "pointer", boxShadow: "0 8px 18px rgba(64,80,214,0.22)" }}
+                  >
+                    <DownloadIcon size={16} />
+                  </button>
+                </div>
                 <img
                   src={getStorageUrl(selectedSession.result_image_path ?? selectedSession.result_thumbnail_path)!}
                   alt="결과"
@@ -161,9 +206,19 @@ export default function Mypage() {
                     .map((photo) => {
                       const url = getStorageUrl(photo.processed_path ?? photo.original_path);
                       return (
-                        <div key={photo.id} style={{ aspectRatio: "1 / 1", borderRadius: "16px", overflow: "hidden", background: "#eef0fb" }}>
+                        <div key={photo.id} style={{ position: "relative", aspectRatio: "1 / 1", borderRadius: "16px", overflow: "hidden", background: "#eef0fb" }}>
                           {url ? (
-                            <img src={url} alt={`${photo.shot_order}번째 컷`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <>
+                              <img src={url} alt={`${photo.shot_order}번째 컷`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              <button
+                                type="button"
+                                onClick={() => downloadImage(url, `framie-${selectedSession.share_code?.code ?? selectedSession.id}-${photo.shot_order}.png`)}
+                                aria-label="저장"
+                                style={{ position: "absolute", bottom: "8px", right: "8px", display: "inline-flex", alignItems: "center", justifyContent: "center", width: "30px", height: "30px", border: "none", borderRadius: "999px", background: "rgba(64,80,214,0.92)", color: "#fff", cursor: "pointer", boxShadow: "0 6px 14px rgba(10,14,40,0.28)", backdropFilter: "blur(6px)" }}
+                              >
+                                <DownloadIcon size={14} />
+                              </button>
+                            </>
                           ) : (
                             <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: MUTED, fontSize: "12px" }}>없음</div>
                           )}
@@ -220,32 +275,35 @@ export default function Mypage() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginBottom: "22px" }}>
             <div>
               <h2 style={{ margin: 0, fontSize: "22px", color: TEXT_MAIN }}>
-                {activeTab === "myframe" ? "저장한 프레임" : "최근 사진"}
+                {activeTab === "myframe" ? "저장한 프레임" : "커스텀 프레임으로 찍은 사진"}
               </h2>
               <p style={{ margin: "6px 0 0", fontSize: "13px", color: MUTED }}>
-                {activeTab === "myframe" ? "프래미에서 저장한 순간들을 확인해보세요" : "준비 중이에요"}
+                {activeTab === "myframe" ? "프래미에서 저장한 순간들을 확인해보세요" : "다른 사람 프레임으로 찍은 사진이 모여요"}
               </p>
             </div>
             <div style={{ minWidth: "56px", height: "56px", padding: "0 14px", borderRadius: "18px", background: "linear-gradient(135deg, #edf0ff 0%, #f8f9ff 100%)", color: PRIMARY, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", fontWeight: 800, boxShadow: "inset 0 0 0 1px rgba(64,80,214,0.08)" }}>
-              {activeTab === "myframe" ? sessions.length : 0}
+              {visibleSessions.length}
             </div>
           </div>
 
-          {activeTab === "photos" ? (
-            <div style={{ textAlign: "center", padding: "48px 0", color: MUTED, fontSize: "15px" }}>준비 중이에요</div>
-          ) : isLoadingSessions ? (
+          {isLoadingSessions ? (
             <div style={{ textAlign: "center", padding: "48px 0", color: MUTED, fontSize: "15px" }}>불러오는 중...</div>
-          ) : sessions.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "48px 0", color: MUTED, fontSize: "15px" }}>저장된 프레임이 없어요</div>
+          ) : visibleSessions.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "48px 0", color: MUTED, fontSize: "15px" }}>
+              {activeTab === "myframe" ? "저장된 프레임이 없어요" : "커스텀 프레임으로 찍은 사진이 없어요"}
+            </div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "16px" }}>
-              {sessions.map((session) => {
+              {visibleSessions.map((session) => {
                 const thumbUrl = getStorageUrl(session.result_thumbnail_path ?? session.result_image_path);
                 const frameTitle = session.frame?.title ?? `${session.frame?.shot_count ?? ""}컷`;
                 const photoCount = session.photos?.length ?? 0;
+                const fullUrl = getStorageUrl(session.result_image_path ?? session.result_thumbnail_path);
                 return (
-                  <button key={session.id} type="button" onClick={() => setSelectedSession(session)}
-                    style={{ background: "linear-gradient(180deg, #fff 0%, #f8f9ff 100%)", borderRadius: "26px", padding: "16px", boxShadow: "0 10px 26px rgba(31,37,82,0.06)", display: "flex", flexDirection: "column", gap: "12px", border: "none", cursor: "pointer", textAlign: "left", width: "100%" }}>
+                  <div key={session.id} role="button" tabIndex={0}
+                    onClick={() => setSelectedSession(session)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedSession(session); } }}
+                    style={{ background: "linear-gradient(180deg, #fff 0%, #f8f9ff 100%)", borderRadius: "26px", padding: "16px", boxShadow: "0 10px 26px rgba(31,37,82,0.06)", display: "flex", flexDirection: "column", gap: "12px", border: "none", cursor: "pointer", textAlign: "left", width: "100%", boxSizing: "border-box" }}>
                     <div style={{ width: "100%", aspectRatio: "1 / 1", borderRadius: "20px", background: "linear-gradient(135deg, #d8defd 0%, #f0f3ff 100%)", overflow: "hidden", position: "relative" }}>
                       {thumbUrl ? (
                         <img src={thumbUrl} alt="썸네일" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -258,11 +316,25 @@ export default function Mypage() {
                         </span>
                       )}
                     </div>
-                    <div>
-                      <p style={{ margin: 0, fontSize: "15px", fontWeight: 800, color: TEXT_MAIN }}>{formatDate(session.created_at)}</p>
-                      <p style={{ margin: "5px 0 0", fontSize: "13px", color: MUTED }}>{frameTitle} · 사진 {photoCount}장</p>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <p style={{ margin: 0, fontSize: "15px", fontWeight: 800, color: TEXT_MAIN }}>{formatDate(session.created_at)}</p>
+                        <p style={{ margin: "5px 0 0", fontSize: "13px", color: MUTED }}>{frameTitle} · 사진 {photoCount}장</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (fullUrl) downloadImage(fullUrl, `framie-${session.share_code?.code ?? session.id}.png`);
+                        }}
+                        disabled={!fullUrl}
+                        aria-label="저장"
+                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "38px", height: "38px", border: "none", borderRadius: "999px", background: fullUrl ? "linear-gradient(135deg, #4050d6 0%, #6573ea 100%)" : "#d0d3e6", color: "#fff", cursor: fullUrl ? "pointer" : "not-allowed", boxShadow: fullUrl ? "0 8px 18px rgba(64,80,214,0.22)" : "none", flexShrink: 0 }}
+                      >
+                        <DownloadIcon size={16} />
+                      </button>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>

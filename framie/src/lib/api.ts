@@ -4,6 +4,14 @@ function getToken(): string | null {
   return localStorage.getItem("access_token");
 }
 
+function handleUnauthorized() {
+  clearToken();
+  localStorage.removeItem("refresh_token");
+  if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+    window.location.replace("/login");
+  }
+}
+
 export function setToken(token: string) {
   localStorage.setItem("access_token", token);
 }
@@ -26,6 +34,9 @@ async function request<T = unknown>(path: string, options: RequestInit = {}): Pr
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
   if (!res.ok) {
+    if (res.status === 401 && token) {
+      handleUnauthorized();
+    }
     const err = await res.json().catch(() => ({ message: res.statusText }));
     throw new Error(err.message || `요청 실패 (${res.status})`);
   }
@@ -83,7 +94,10 @@ export const api = {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       });
-      if (!res.ok) throw new Error("배경 제거에 실패했어요.");
+      if (!res.ok) {
+        if (res.status === 401 && token) handleUnauthorized();
+        throw new Error("배경 제거에 실패했어요.");
+      }
       return res.blob();
     },
 
@@ -99,6 +113,7 @@ export const api = {
         body: formData,
       });
       if (!res.ok) {
+        if (res.status === 401 && token) handleUnauthorized();
         const err = await res.json().catch(() => ({}));
         throw new Error((err as { message?: string }).message || "업로드 실패");
       }

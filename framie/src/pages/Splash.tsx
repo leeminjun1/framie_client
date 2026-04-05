@@ -2,13 +2,13 @@
 import LogoUrl from "../assets/Framie_white.svg";
 import "./Splash.css";
 import { useNavigate } from "react-router-dom";
+import { isLoggedIn } from "../lib/api";
 
 export default function Splash() {
   const navigate = useNavigate();
 
   const handleStart = () => {
-    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-    navigate(isLoggedIn ? "/index" : "/login");
+    navigate(isLoggedIn() ? "/index" : "/login");
   };
 
   return (

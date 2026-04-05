@@ -10,7 +10,57 @@ type ResultPayload = {
   shotCount: number;
   frameTitle: string;
   photos: string[];
+  originals: string[];
+  sourceType?: string;
+  frameOwnerId?: string;
+  overlayPhotos?: string[];
 };
+
+function loadImageFromUrl(src: string, crossOrigin = true) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    if (crossOrigin) img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("오버레이 이미지를 불러오지 못했어요."));
+    img.src = src;
+  });
+}
+
+async function compositeOverlay(
+  userTransparentBlob: Blob,
+  overlayUrl: string,
+  side: "left" | "right" = "left"
+): Promise<Blob> {
+  const userUrl = URL.createObjectURL(userTransparentBlob);
+  try {
+    const [userImg, overlayImg] = await Promise.all([
+      loadImageFromUrl(userUrl, false),
+      loadImageFromUrl(overlayUrl, true),
+    ]);
+    const canvas = document.createElement("canvas");
+    canvas.width = userImg.naturalWidth;
+    canvas.height = userImg.naturalHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("캔버스를 만들 수 없어요.");
+    // 오버레이(프레임 주인)를 좌/우 끝으로 붙여서 인생네컷 느낌.
+    // 높이를 캔버스에 맞추고(=세로 꽉), 가로는 그에 비례해 스케일.
+    const scale = canvas.height / overlayImg.naturalHeight;
+    const ow = overlayImg.naturalWidth * scale;
+    const oh = canvas.height;
+    const ox = side === "left" ? 0 : canvas.width - ow;
+    const oy = 0;
+    ctx.drawImage(overlayImg, ox, oy, ow, oh);
+    ctx.drawImage(userImg, 0, 0);
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error("합성 결과를 만들 수 없어요."))),
+        "image/png"
+      );
+    });
+  } finally {
+    URL.revokeObjectURL(userUrl);
+  }
+}
 
 async function removeBackground(imageBlob: Blob) {
   return api.images.removeBg(imageBlob);
@@ -51,13 +101,17 @@ function captureVideoFrame(video: HTMLVideoElement) {
   context.restore();
 
   return new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        reject(new Error("사진 캡처에 실패했어요."));
-        return;
-      }
-      resolve(blob);
-    }, "image/png");
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("사진 캡처에 실패했어요."));
+          return;
+        }
+        resolve(blob);
+      },
+      "image/jpeg",
+      0.92
+    );
   });
 }
 
@@ -69,9 +123,20 @@ export default function TakePhoto() {
   const frameId = location.state?.frameId || "";
   const shotCount = Number(location.state?.shotCount) || 2;
   const frameTitle = location.state?.frameTitle || `${shotCount}컷`;
+  const rawRetakeIndex = location.state?.retakeIndex;
+  const initialPhotos: string[] = Array.isArray(location.state?.photos) ? location.state.photos : [];
+  const initialOriginals: string[] = Array.isArray(location.state?.originals) ? location.state.originals : [];
+  const overlayPhotos: string[] = Array.isArray(location.state?.overlayPhotos) ? location.state.overlayPhotos : [];
+  const sourceType: string | undefined = location.state?.sourceType;
+  const frameOwnerId: string | undefined = location.state?.frameOwnerId;
+  const isCustomShoot = sourceType === "other_frame";
+  const isRetake =
+    typeof rawRetakeIndex === "number" && rawRetakeIndex >= 0 && rawRetakeIndex < shotCount;
+  const retakeIndex: number | null = isRetake ? rawRetakeIndex : null;
   const [error, setError] = useState<string>("");
-  const [currentShotIndex, setCurrentShotIndex] = useState(0);
-  const [capturedImages, setCapturedImages] = useState<string[]>([]);
+  const [currentShotIndex, setCurrentShotIndex] = useState(isRetake ? (retakeIndex as number) : 0);
+  const [capturedImages, setCapturedImages] = useState<string[]>(isRetake ? initialPhotos : []);
+  const [capturedOriginals, setCapturedOriginals] = useState<string[]>(isRetake ? initialOriginals : []);
   const [isProcessing, setIsProcessing] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [isCountingDown, setIsCountingDown] = useState(false);
@@ -159,11 +224,53 @@ export default function TakePhoto() {
       setIsProcessing(true);
 
       const capturedBlob = await captureVideoFrame(videoRef.current);
-      const transparentBlob = await removeBackground(capturedBlob);
-      const transparentImageUrl = await blobToDataUrl(transparentBlob);
+      const originalImageUrl = await blobToDataUrl(capturedBlob);
+      const userTransparentBlob = await removeBackground(capturedBlob);
 
-      const nextImages = [...capturedImages, transparentImageUrl];
+      // 커스텀 프레임 촬영이면 이 컷의 오버레이(프레임 주인 사진)를 합성
+      const shotIndex = isRetake && retakeIndex !== null ? retakeIndex : currentShotIndex;
+      const overlayForShot = isCustomShoot ? overlayPhotos[shotIndex] : undefined;
+      const overlaySide: "left" | "right" = shotIndex % 2 === 0 ? "left" : "right";
+      let finalBlob: Blob = userTransparentBlob;
+      if (overlayForShot) {
+        try {
+          finalBlob = await compositeOverlay(userTransparentBlob, overlayForShot, overlaySide);
+        } catch (e) {
+          console.error("오버레이 합성 실패, 원본만 사용:", e);
+        }
+      }
+      const transparentImageUrl = await blobToDataUrl(finalBlob);
+
+      let nextImages: string[];
+      let nextOriginals: string[];
+      if (isRetake && retakeIndex !== null) {
+        nextImages = [...capturedImages];
+        nextImages[retakeIndex] = transparentImageUrl;
+        nextOriginals = [...capturedOriginals];
+        nextOriginals[retakeIndex] = originalImageUrl;
+      } else {
+        nextImages = [...capturedImages, transparentImageUrl];
+        nextOriginals = [...capturedOriginals, originalImageUrl];
+      }
       setCapturedImages(nextImages);
+      setCapturedOriginals(nextOriginals);
+
+      // 단일 컷 재촬영 모드: 바로 결과 화면으로 돌아가기
+      if (isRetake) {
+        const resultPayload: ResultPayload = {
+          frameId,
+          shotCount,
+          frameTitle,
+          photos: nextImages,
+          originals: nextOriginals,
+          sourceType,
+          frameOwnerId,
+          overlayPhotos: isCustomShoot ? overlayPhotos : undefined,
+        };
+        sessionStorage.setItem("photoResultData", JSON.stringify(resultPayload));
+        navigate("/photo/result", { state: resultPayload });
+        return;
+      }
 
       const isLastShot = currentShotIndex >= shotCount - 1;
 
@@ -177,6 +284,10 @@ export default function TakePhoto() {
         shotCount,
         frameTitle,
         photos: nextImages,
+        originals: nextOriginals,
+        sourceType,
+        frameOwnerId,
+        overlayPhotos: isCustomShoot ? overlayPhotos : undefined,
       };
 
       sessionStorage.setItem("photoResultData", JSON.stringify(resultPayload));
@@ -192,11 +303,12 @@ export default function TakePhoto() {
       setIsCountingDown(false);
       setIsProcessing(false);
     }
-  }, [capturedImages, currentShotIndex, frameId, frameTitle, isCountingDown, isProcessing, navigate, shotCount]);
+  }, [capturedImages, capturedOriginals, currentShotIndex, frameId, frameTitle, isCountingDown, isProcessing, isRetake, retakeIndex, navigate, shotCount, isCustomShoot, overlayPhotos, sourceType, frameOwnerId]);
 
   const handleResetShots = () => {
     setCurrentShotIndex(0);
     setCapturedImages([]);
+    setCapturedOriginals([]);
     setError("");
     setCountdown(null);
     setIsCountingDown(false);
@@ -278,7 +390,9 @@ export default function TakePhoto() {
               fontWeight: 400,
             }}
           >
-            {frameTitle} 촬영을 준비하고 있어요
+            {isRetake
+              ? `${(retakeIndex as number) + 1}번째 컷을 다시 찍어요`
+              : `${frameTitle} 촬영을 준비하고 있어요`}
           </p>
         </header>
 
@@ -319,6 +433,25 @@ export default function TakePhoto() {
               }}
             />
 
+            {isCustomShoot && overlayPhotos[currentShotIndex] ? (
+              <img
+                src={overlayPhotos[currentShotIndex]}
+                alt="프레임 오버레이"
+                crossOrigin="anonymous"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  objectPosition: currentShotIndex % 2 === 0 ? "left center" : "right center",
+                  pointerEvents: "none",
+                  opacity: 0.75,
+                  zIndex: 1,
+                }}
+              />
+            ) : null}
+
             <div
               style={{
                 position: "absolute",
@@ -333,7 +466,9 @@ export default function TakePhoto() {
                 fontSize: 15,
               }}
             >
-              {Math.min(currentShotIndex + 1, shotCount)} / {shotCount} 컷 진행 중
+              {isRetake
+                ? `${(retakeIndex as number) + 1} / ${shotCount} 컷 재촬영 중`
+                : `${Math.min(currentShotIndex + 1, shotCount)} / ${shotCount} 컷 진행 중`}
             </div>
 
             {isCountingDown && countdown ? (
@@ -478,7 +613,13 @@ export default function TakePhoto() {
                           fontSize: 13,
                         }}
                       >
-                        {isDone ? "촬영 완료" : isActive ? "현재 촬영 차례" : "대기 중"}
+                        {isActive
+                          ? isRetake
+                            ? "재촬영 차례"
+                            : "현재 촬영 차례"
+                          : isDone
+                          ? "촬영 완료"
+                          : "대기 중"}
                       </span>
                     </div>
                   </div>
@@ -508,30 +649,34 @@ export default function TakePhoto() {
                   ? `${countdown ?? 5}초 후 촬영`
                   : isProcessing
                   ? "배경 제거 중..."
+                  : isRetake
+                  ? "다시 찍기"
                   : currentShotIndex === shotCount - 1
                   ? "마지막 사진 찍기"
                   : "사진 찍기"}
               </button>
 
-              <button
-                type="button"
-                onClick={handleResetShots}
-                disabled={isProcessing || isCountingDown}
-                style={{
-                  border: "1.5px solid rgba(48, 71, 217, 0.22)",
-                  borderRadius: 18,
-                  background: "#ffffff",
-                  color: PRIMARY,
-                  fontFamily: "Paperozi",
-                  fontWeight: 400,
-                  fontSize: 15,
-                  padding: "14px 18px",
-                  cursor: isProcessing || isCountingDown ? "not-allowed" : "pointer",
-                  opacity: isProcessing || isCountingDown ? 0.68 : 1,
-                }}
-              >
-                처음부터 다시 찍기
-              </button>
+              {!isRetake && (
+                <button
+                  type="button"
+                  onClick={handleResetShots}
+                  disabled={isProcessing || isCountingDown}
+                  style={{
+                    border: "1.5px solid rgba(48, 71, 217, 0.22)",
+                    borderRadius: 18,
+                    background: "#ffffff",
+                    color: PRIMARY,
+                    fontFamily: "Paperozi",
+                    fontWeight: 400,
+                    fontSize: 15,
+                    padding: "14px 18px",
+                    cursor: isProcessing || isCountingDown ? "not-allowed" : "pointer",
+                    opacity: isProcessing || isCountingDown ? 0.68 : 1,
+                  }}
+                >
+                  처음부터 다시 찍기
+                </button>
+              )}
             </div>
             
 
