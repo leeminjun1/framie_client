@@ -315,14 +315,7 @@ export default function TakePhoto() {
     sessionStorage.removeItem("photoResultData");
   };
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#fbf9f3",
-        padding: "56px 24px 64px",
-        boxSizing: "border-box",
-      }}
-    >
+    <div className="framie-takephoto-page">
       <style>{`
         @font-face {
           font-family: 'Paperozi';
@@ -396,14 +389,7 @@ export default function TakePhoto() {
           </p>
         </header>
 
-        <main
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 1fr) 320px",
-            gap: 24,
-            alignItems: "start",
-          }}
-        >
+        <main className="framie-takephoto-grid">
           <section
             aria-label="카메라 미리보기"
             style={{

@@ -70,11 +70,10 @@ export default function CustomResult() {
 
   return (
     <div
+      className="framie-result-grid"
       style={{
         minHeight: "100vh",
         background: PAGE_BG,
-        display: "grid",
-        gridTemplateColumns: "minmax(0, 1fr) minmax(320px, 570px)",
       }}
     >
       <section

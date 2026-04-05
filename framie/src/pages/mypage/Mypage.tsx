@@ -124,11 +124,10 @@ export default function Mypage() {
     <div style={{ minHeight: "100vh", background: "radial-gradient(circle at top, #ffffff 0%, #f7f8ff 32%, #f5f4ee 72%, #efeff8 100%)", padding: "clamp(20px, 4vw, 40px) clamp(16px, 3vw, 32px) 56px", boxSizing: "border-box", position: "relative" }}>
       <button
         type="button"
+        className="framie-mypage-home-btn"
         onClick={() => navigate("/index")}
         style={{
           position: "fixed",
-          top: "24px",
-          right: "24px",
           zIndex: 120,
           height: "48px",
           padding: "0 18px",

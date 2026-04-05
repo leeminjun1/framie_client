@@ -1,0 +1,82 @@
+/* 모바일 반응형 (768px 이하)
+ *
+ * 데스크톱(769px+)에서는 기존 2단 레이아웃이 그대로 유지되고,
+ * 모바일에서만 세로 1열로 접힙니다.
+ *
+ * 인라인 style의 gridTemplateColumns는 여기로 옮겨야 className이 동작합니다.
+ */
+
+/* 사진/커스텀 결과 페이지 (왼쪽 프레임 미리보기 + 오른쪽 파란 패널) */
+.framie-result-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 570px);
+}
+
+/* 촬영 페이지 (카메라 프리뷰 + 320px 사이드바) */
+.framie-takephoto-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  align-items: start;
+}
+
+/* 촬영 페이지 외곽 패딩 */
+.framie-takephoto-page {
+  min-height: 100vh;
+  background: #fbf9f3;
+  padding: 56px 24px 64px;
+  box-sizing: border-box;
+}
+
+/* 마이페이지 "홈으로" 버튼: iOS 노치/safe-area 고려 */
+.framie-mypage-home-btn {
+  top: max(24px, env(safe-area-inset-top, 24px));
+  right: max(24px, env(safe-area-inset-right, 24px));
+}
+
+/* 결과 페이지 프레임 미리보기 래퍼 (3컷 가로형 / 세로형) */
+.framie-frame-preview.is-3cut {
+  width: min(88vw, 980px);
+}
+.framie-frame-preview.is-vertical {
+  width: min(78vw, 520px);
+}
+
+@media (max-width: 768px) {
+  .framie-result-grid,
+  .framie-takephoto-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* 결과 페이지: 모바일에서는 프레임 미리보기가 너무 큰 min-height 를 차지하지 않도록 */
+  .framie-result-grid > section:first-child {
+    min-height: auto;
+    padding: 20px 8px;
+  }
+
+  /* 결과 페이지 우측 파란 패널: 모바일에서 전체 높이 강제 해제 */
+  .framie-result-grid > section:last-child {
+    min-height: auto;
+    padding: 32px 20px 48px;
+  }
+
+  /* 촬영 페이지: 좁은 화면 패딩 축소 */
+  .framie-takephoto-page {
+    padding: 24px 14px 40px;
+  }
+
+  /* 3컷(가로형)은 모바일에서 거의 풀 폭으로, 세로 프레임은 약간 여유 */
+  .framie-frame-preview.is-3cut {
+    width: 96vw;
+  }
+  .framie-frame-preview.is-vertical {
+    width: min(92vw, 520px);
+  }
+
+  /* 마이페이지 홈 버튼: 더 작게 */
+  .framie-mypage-home-btn {
+    height: 42px !important;
+    padding: 0 14px !important;
+    font-size: 13px !important;
+  }
+}

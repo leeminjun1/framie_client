@@ -277,7 +277,7 @@ function EditCutButton({ index, onEditCut }: { index: number; onEditCut: (index:
 function FramePreview({ shotCount, photos, frameColor, onEditCut }: { shotCount: number; photos: string[]; frameColor: FrameColorOption; onEditCut?: (index: number) => void }) {
   const slots = getSlots(shotCount).map((s) => applySlotGap(fitSlotToAspect(s, getViewportAspectRatio(), shotCount), shotCount));
   return (
-    <div style={{ width: shotCount === 3 ? "min(88vw, 980px)" : "min(78vw, 520px)", aspectRatio: `${getFrameAspectRatio(shotCount)}`, border: `3px solid ${frameColor.border}`, borderRadius: 0, padding: shotCount === 3 ? "0px" : "18px 0", boxSizing: "border-box", background: frameColor.border }}>
+    <div className={`framie-frame-preview ${shotCount === 3 ? "is-3cut" : "is-vertical"}`} style={{ aspectRatio: `${getFrameAspectRatio(shotCount)}`, border: `3px solid ${frameColor.border}`, borderRadius: 0, padding: shotCount === 3 ? "0px" : "18px 0", boxSizing: "border-box", background: frameColor.border }}>
       <div style={{ width: "100%", height: "100%", border: "none", borderRadius: 0, position: "relative", background: frameColor.border }}>
         {shotCount === 3 ? (
           (() => {
@@ -460,7 +460,7 @@ export default function PhotoResult() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: PAGE_BG, display: "grid", gridTemplateColumns: shotCount === 3 ? "minmax(760px, 1fr) minmax(320px, 570px)" : "minmax(0, 1fr) minmax(320px, 570px)" }}>
+    <div className="framie-result-grid" style={{ minHeight: "100vh", background: PAGE_BG }}>
       <section style={{ background: PAGE_BG, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", boxSizing: "border-box" }}>
         {photos.length > 0 ? (
           <FramePreview shotCount={shotCount} photos={photos} frameColor={selectedFrameColor} onEditCut={setEditingCutIndex} />
