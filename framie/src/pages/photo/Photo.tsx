@@ -47,6 +47,14 @@ export default function Photo() {
     <>
       <style>{fontFaceStyles}</style>
       <div style={styles.page}>
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        aria-label="뒤로가기"
+        style={styles.backButton}
+      >
+        <span style={{ marginTop: -3 }}>‹</span>
+      </button>
       <main style={styles.container}>
         <header style={styles.header}>
           <img src={h1} alt="프레임 선택" style={styles.titleImage} />
@@ -130,6 +138,27 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     padding: "40px 24px",
     boxSizing: "border-box",
+    position: "relative",
+  },
+  backButton: {
+    position: "absolute",
+    top: "max(20px, env(safe-area-inset-top, 20px))",
+    left: "max(20px, env(safe-area-inset-left, 20px))",
+    width: 44,
+    height: 44,
+    borderRadius: "50%",
+    border: "none",
+    background: "#ffffff",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+    color: "#3d56dd",
+    fontSize: 28,
+    lineHeight: 1,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    padding: 0,
+    zIndex: 10,
   },
   container: {
     width: "100%",
