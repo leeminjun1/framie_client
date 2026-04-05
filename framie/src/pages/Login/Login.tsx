@@ -93,7 +93,7 @@ export default function Login() {
               </p>
             ) : null}
 
-            <div className="logi">
+            <div className="login-links">
               <button
                 type="button"
                 className="login-link"
@@ -102,10 +102,6 @@ export default function Login() {
               >
                 계정이 없다면?
               </button>
-              <span
-                aria-hidden="true"
-                style={{ display: "inline-block", width: "400px" }}
-              />
               <button
                 type="button"
                 className="login-link"

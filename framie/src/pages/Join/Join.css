@@ -69,10 +69,9 @@
 
 /* Layout */
 .join-page {
-  height: 100vh;
+  min-height: 100vh;
   width: 100%;
   display: flex;
-  overflow: hidden;
 }
 
 .join-left {
@@ -226,5 +225,36 @@
 
   .join-right {
     padding: 36px 24px;
+  }
+}
+
+@media (max-width: 560px) {
+  .join-left {
+    padding: 28px 20px;
+  }
+  .join-left-subtitle {
+    font-size: 16px;
+  }
+  .join-left-logo {
+    width: min(320px, 72vw);
+  }
+  .join-right {
+    padding: 28px 18px 40px;
+  }
+  .join-title {
+    width: 140px;
+    margin-bottom: 24px;
+  }
+  .join-input {
+    height: 50px;
+    font-size: 15px;
+  }
+  .join-submit {
+    height: 52px;
+    font-size: 15px;
+  }
+  .join-links {
+    flex-wrap: wrap;
+    gap: 8px;
   }
 }
