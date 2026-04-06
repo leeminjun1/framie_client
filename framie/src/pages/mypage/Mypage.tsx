@@ -61,6 +61,8 @@ type Session = {
   id: string;
   created_at: string;
   source_type: string | null;
+  photographer_id: string | null;
+  frame_owner_id: string | null;
   result_thumbnail_path: string | null;
   result_image_path: string | null;
   frame: { title: string; shot_count: number } | null;

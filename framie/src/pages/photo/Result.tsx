@@ -433,7 +433,7 @@ export default function PhotoResult() {
       const createdSession = await api.sessions.create({
         frame_id: resolvedFrameId,
         frame_owner_id: frameOwnerIdFromState || authUserId,
-        source_type: sourceType,
+        source_type: sourceType === "other_frame" ? "other_frame" : "own_frame",
         user_message: message || undefined,
         result_image_path: previewPath,
         result_thumbnail_path: previewPath,
