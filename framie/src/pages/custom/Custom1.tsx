@@ -61,7 +61,10 @@ export default function Custom1() {
         .map((p) => getStorageUrl(p.processed_path ?? p.original_path))
         .filter((u): u is string => !!u);
 
-      navigate("/takephoto", {
+      const resultImagePath = (session as any).result_image_path ?? (session as any).result_thumbnail_path ?? null;
+      const resultImageUrl = resultImagePath ? getStorageUrl(resultImagePath) : null;
+
+      navigate("/custom2", {
         state: {
           frameId: frame.id,
           shotCount: frame.shot_count,
@@ -69,6 +72,9 @@ export default function Custom1() {
           overlayPhotos,
           sourceType: "other_frame",
           frameOwnerId: session.frame_owner_id ?? undefined,
+          displayUserId: (session as any).display_user_id ?? null,
+          userMessage: (session as any).user_message ?? null,
+          resultImageUrl,
         },
       });
     } catch {

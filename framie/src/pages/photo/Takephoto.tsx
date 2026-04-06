@@ -27,11 +27,11 @@ function loadImageFromUrl(src: string, crossOrigin = true) {
 }
 
 async function compositeOverlay(
-  userTransparentBlob: Blob,
+  userPhotoBlob: Blob,
   overlayUrl: string,
   side: "left" | "right" = "left"
 ): Promise<Blob> {
-  const userUrl = URL.createObjectURL(userTransparentBlob);
+  const userUrl = URL.createObjectURL(userPhotoBlob);
   try {
     const [userImg, overlayImg] = await Promise.all([
       loadImageFromUrl(userUrl, false),
@@ -42,15 +42,15 @@ async function compositeOverlay(
     canvas.height = userImg.naturalHeight;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("캔버스를 만들 수 없어요.");
-    // 오버레이(프레임 주인)를 좌/우 끝으로 붙여서 인생네컷 느낌.
-    // 높이를 캔버스에 맞추고(=세로 꽉), 가로는 그에 비례해 스케일.
+    // 1) 유저 사진을 먼저 (뒤에 깔림)
+    ctx.drawImage(userImg, 0, 0);
+    // 2) 오버레이(프레임 주인 누끼)를 위에 그리기 (앞에 보임)
     const scale = canvas.height / overlayImg.naturalHeight;
     const ow = overlayImg.naturalWidth * scale;
     const oh = canvas.height;
     const ox = side === "left" ? 0 : canvas.width - ow;
     const oy = 0;
     ctx.drawImage(overlayImg, ox, oy, ow, oh);
-    ctx.drawImage(userImg, 0, 0);
     return await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(
         (blob) => (blob ? resolve(blob) : reject(new Error("합성 결과를 만들 수 없어요."))),
@@ -225,21 +225,32 @@ export default function TakePhoto() {
 
       const capturedBlob = await captureVideoFrame(videoRef.current);
       const originalImageUrl = await blobToDataUrl(capturedBlob);
-      const userTransparentBlob = await removeBackground(capturedBlob);
 
-      // 커스텀 프레임 촬영이면 이 컷의 오버레이(프레임 주인 사진)를 합성
       const shotIndex = isRetake && retakeIndex !== null ? retakeIndex : currentShotIndex;
-      const overlayForShot = isCustomShoot ? overlayPhotos[shotIndex] : undefined;
-      const overlaySide: "left" | "right" = shotIndex % 2 === 0 ? "left" : "right";
-      let finalBlob: Blob = userTransparentBlob;
-      if (overlayForShot) {
-        try {
-          finalBlob = await compositeOverlay(userTransparentBlob, overlayForShot, overlaySide);
-        } catch (e) {
-          console.error("오버레이 합성 실패, 원본만 사용:", e);
+      let finalImageUrl: string;
+
+      if (isCustomShoot) {
+        // 커스텀 프레임 촬영: 누끼 안 따고, 원본 사진 위에 오버레이(프레임 주인)를 앞에 합성
+        const overlayForShot = overlayPhotos[shotIndex];
+        const overlaySide: "left" | "right" = shotIndex % 2 === 0 ? "left" : "right";
+        if (overlayForShot) {
+          try {
+            const composited = await compositeOverlay(capturedBlob, overlayForShot, overlaySide);
+            finalImageUrl = await blobToDataUrl(composited);
+          } catch (e) {
+            console.error("오버레이 합성 실패, 원본만 사용:", e);
+            finalImageUrl = originalImageUrl;
+          }
+        } else {
+          finalImageUrl = originalImageUrl;
         }
+      } else {
+        // 일반 촬영: 배경 제거
+        const userTransparentBlob = await removeBackground(capturedBlob);
+        finalImageUrl = await blobToDataUrl(userTransparentBlob);
       }
-      const transparentImageUrl = await blobToDataUrl(finalBlob);
+
+      const transparentImageUrl = finalImageUrl;
 
       let nextImages: string[];
       let nextOriginals: string[];
@@ -549,7 +560,9 @@ export default function TakePhoto() {
                   lineHeight: 1.5,
                 }}
               >
-                사진을 찍으면 배경 제거 후 투명 PNG 상태로 결과 화면에 넘겨져요.
+                {isCustomShoot
+                  ? "사진을 찍으면 프레임 주인 사진과 합성돼요."
+                  : "사진을 찍으면 배경 제거 후 투명 PNG 상태로 결과 화면에 넘겨져요."}
               </p>
             </div>
 
@@ -634,7 +647,7 @@ export default function TakePhoto() {
                 {isCountingDown
                   ? `${countdown ?? 5}초 후 촬영`
                   : isProcessing
-                  ? "배경 제거 중..."
+                  ? (isCustomShoot ? "사진 합성 중..." : "배경 제거 중...")
                   : isRetake
                   ? "다시 찍기"
                   : currentShotIndex === shotCount - 1

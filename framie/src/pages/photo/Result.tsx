@@ -593,6 +593,7 @@ export default function PhotoResult() {
         <PhotoEditor
           transparentSrc={photos[editorCutIndex]}
           originalSrc={originals[editorCutIndex] ?? null}
+          hasTransparentBg={sourceType !== "other_frame"}
           onCancel={() => setEditorCutIndex(null)}
           onApply={(newDataUrl) => {
             const idx = editorCutIndex;
