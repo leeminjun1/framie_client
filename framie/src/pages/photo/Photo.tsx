@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import h1 from "../../assets/frame_select_blue.svg";
 import { useNavigate } from "react-router-dom";
 
@@ -14,6 +15,27 @@ const fontFaceStyles = `
     src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-4Regular.woff2') format('woff2');
     font-weight: 400;
     font-display: swap;
+  }
+
+  .photo-option-slider {
+    scrollbar-width: none;
+  }
+
+  .photo-option-slider::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+    .photo-option-slider {
+      display: flex !important;
+      gap: 0 !important;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      padding: 10px 0 18px;
+      margin: 0 calc(50% - 50vw);
+      padding-inline: calc(50vw - 135px);
+      -webkit-overflow-scrolling: touch;
+    }
   }
 `;
 
@@ -43,6 +65,107 @@ const frameOptions = [
 
 export default function Photo() {
   const navigate = useNavigate();
+  const sliderRef = useRef<HTMLElement | null>(null);
+  const isAdjustingScrollRef = useRef(false);
+  const repeatedFrameOptions = useMemo(
+    () => [...frameOptions, ...frameOptions, ...frameOptions],
+    []
+  );
+  const middleSetStartIndex = frameOptions.length;
+  const [activeIndex, setActiveIndex] = useState(1);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth <= 768 : false
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const slider = sliderRef.current;
+    if (!slider) return;
+
+    requestAnimationFrame(() => {
+      const children = Array.from(slider.children) as HTMLElement[];
+      const initialCard = children[middleSetStartIndex + activeIndex];
+      if (!initialCard) return;
+
+      const targetLeft =
+        initialCard.offsetLeft - (slider.clientWidth - initialCard.offsetWidth) / 2;
+
+      slider.scrollLeft = targetLeft;
+    });
+  }, [isMobile, middleSetStartIndex]);
+
+  const mobileCardStyles = useMemo(
+    () =>
+      (isMobile ? repeatedFrameOptions : frameOptions).map((_, index) => {
+        const originalIndex = index % frameOptions.length;
+        if (!isMobile) return styles.optionButton;
+        return {
+          ...styles.optionButton,
+          ...(activeIndex === originalIndex
+            ? styles.optionButtonMobileActive
+            : styles.optionButtonMobileInactive),
+        };
+      }),
+    [activeIndex, isMobile, repeatedFrameOptions]
+  );
+
+  const renderedOptions = isMobile ? repeatedFrameOptions : frameOptions;
+
+  const handleSliderScroll = () => {
+    const slider = sliderRef.current;
+    if (!slider || typeof window === "undefined" || window.innerWidth > 768) return;
+
+    const children = Array.from(slider.children) as HTMLElement[];
+    if (!children.length) return;
+
+    const segmentWidth = slider.scrollWidth / 3;
+
+    if (!isAdjustingScrollRef.current) {
+      if (slider.scrollLeft < segmentWidth * 0.5) {
+        isAdjustingScrollRef.current = true;
+        slider.scrollLeft += segmentWidth;
+        requestAnimationFrame(() => {
+          isAdjustingScrollRef.current = false;
+        });
+      } else if (slider.scrollLeft > segmentWidth * 1.5) {
+        isAdjustingScrollRef.current = true;
+        slider.scrollLeft -= segmentWidth;
+        requestAnimationFrame(() => {
+          isAdjustingScrollRef.current = false;
+        });
+      }
+    }
+
+    const sliderCenter = slider.scrollLeft + slider.clientWidth / 2;
+
+    let nextIndex = 0;
+    let minDistance = Number.POSITIVE_INFINITY;
+
+    children.forEach((child, index) => {
+      const childCenter = child.offsetLeft + child.offsetWidth / 2;
+      const distance = Math.abs(sliderCenter - childCenter);
+      if (distance < minDistance) {
+        minDistance = distance;
+        nextIndex = index % frameOptions.length;
+      }
+    });
+
+    setActiveIndex(nextIndex);
+  };
+
   return (
     <>
       <style>{fontFaceStyles}</style>
@@ -61,12 +184,17 @@ export default function Photo() {
           <p style={styles.subtitle}>사진 컷수를 선택 해주세요</p>
         </header>
 
-        <section style={styles.optionGrid}>
-          {frameOptions.map((option) => (
+        <section
+          ref={sliderRef}
+          style={styles.optionGrid}
+          className="photo-option-slider"
+          onScroll={handleSliderScroll}
+        >
+          {renderedOptions.map((option, index) => (
             <button
-              key={option.id}
+              key={`${option.id}-${index}`}
               type="button"
-              style={styles.optionButton}
+              style={mobileCardStyles[index]}
               onClick={() => {
                 navigate("/takephoto", {
                   state: {
@@ -77,12 +205,14 @@ export default function Photo() {
                 });
               }}
               onMouseEnter={(event) => {
+                if (typeof window !== "undefined" && window.innerWidth <= 768) return;
                 event.currentTarget.style.transform = "translateY(-8px)";
                 event.currentTarget.style.boxShadow =
                   "0 18px 40px rgba(61, 86, 221, 0.16)";
                 event.currentTarget.style.borderColor = "#3d56dd";
               }}
               onMouseLeave={(event) => {
+                if (typeof window !== "undefined" && window.innerWidth <= 768) return;
                 event.currentTarget.style.transform = "translateY(0)";
                 event.currentTarget.style.boxShadow = "0 10px 24px rgba(61, 86, 221, 0.08)";
                 event.currentTarget.style.borderColor = "rgba(61, 86, 221, 0.65)";
@@ -193,7 +323,9 @@ const styles: Record<string, React.CSSProperties> = {
     gap: "28px",
   },
   optionButton: {
-    border: "2px solid rgba(61, 86, 221, 0.65)",
+    borderWidth: "2px",
+    borderStyle: "solid",
+    borderColor: "rgba(61, 86, 221, 0.65)",
     borderRadius: "28px",
     background: "rgba(255, 255, 255, 0.9)",
     padding: "24px 22px 26px",
@@ -204,6 +336,20 @@ const styles: Record<string, React.CSSProperties> = {
     gap: "22px",
     boxShadow: "0 10px 24px rgba(61, 86, 221, 0.08)",
     transition: "all 0.2s ease",
+    scrollSnapAlign: "center",
+    flex: "0 0 auto",
+  },
+  optionButtonMobileActive: {
+    width: "270px",
+    transform: "scale(1)",
+    boxShadow: "0 18px 40px rgba(61, 86, 221, 0.16)",
+    borderColor: "#7f96ff",
+    opacity: 1,
+  },
+  optionButtonMobileInactive: {
+    width: "270px",
+    transform: "scale(0.9)",
+    opacity: 0.72,
   },
   previewWrap: {
     width: "100%",
