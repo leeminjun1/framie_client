@@ -62,7 +62,7 @@
     padding-inline: calc(50vw - 135px);
     -webkit-overflow-scrolling: touch;
   }
-}
+
   .framie-result-grid,
   .framie-takephoto-grid {
     grid-template-columns: 1fr;
